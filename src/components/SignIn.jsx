@@ -1,8 +1,40 @@
-import React from "react";
+import React, { use } from "react";
+import { AuthContext } from "../contexts/AuthContext";
 
 const SignIn = () => {
+  const { signInUser } = use(AuthContext);
+
   const handleSignIn = (e) => {
     e.preventDefault();
+    const form = e.target;
+    const email = form.email.value;
+    const password = form.password.value;
+    console.log(email, password);
+
+    // firebase sign in send
+    signInUser(email, password)
+      .then((result) => {
+        console.log(result.user);
+        const singInInfo = {
+          email,
+          lastSignInTime: result.user?.metadata?.lastSignInTime,
+        };
+        // update last sign in to the database
+        fetch("https://coffee-store-server-rust-seven.vercel.app/users", {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(singInInfo),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            console.log("after update patch", data);
+          });
+      })
+      .catch((error) => {
+        console.log(error);
+      });
   };
 
   return (
