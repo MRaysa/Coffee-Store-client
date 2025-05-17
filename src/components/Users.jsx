@@ -6,6 +6,39 @@ const Users = () => {
   const initialUsers = useLoaderData();
   const [users, setUsers] = useState(initialUsers);
 
+  // const handleDelete = (id) => {
+  //   Swal.fire({
+  //     title: "Are you sure?",
+  //     text: "You won't be able to revert this!",
+  //     icon: "warning",
+  //     showCancelButton: true,
+  //     confirmButtonColor: "#3085d6",
+  //     cancelButtonColor: "#d33",
+  //     confirmButtonText: "Yes, delete it!",
+  //   }).then((result) => {
+  //     if (result.isConfirmed) {
+  //       fetch(`https://coffee-store-server-rust-seven.vercel.app/users/${id}`, {
+  //         method: "DELETE",
+  //       })
+  //         .then((res) => res.json())
+  //         .then((data) => {
+  //           if (data.deletedCount) {
+  //             const remainingUsers = users.filter((user) => user._id !== id);
+  //             setUsers(remainingUsers);
+
+  //             // TODO Delete user from firebase
+
+  //             Swal.fire({
+  //               title: "Deleted!",
+  //               text: "Your user has been deleted.",
+  //               icon: "success",
+  //             });
+  //           }
+  //         });
+  //     }
+  //   });
+  // };
+
   const handleDelete = (id) => {
     Swal.fire({
       title: "Are you sure?",
@@ -17,23 +50,44 @@ const Users = () => {
       confirmButtonText: "Yes, delete it!",
     }).then((result) => {
       if (result.isConfirmed) {
+        // First delete from MongoDB
         fetch(`https://coffee-store-server-rust-seven.vercel.app/users/${id}`, {
           method: "DELETE",
         })
           .then((res) => res.json())
           .then((data) => {
             if (data.deletedCount) {
-              const remainingUsers = users.filter((user) => user._id !== id);
-              setUsers(remainingUsers);
-
-              // TODO Delete user from firebase
-
-              Swal.fire({
-                title: "Deleted!",
-                text: "Your user has been deleted.",
-                icon: "success",
-              });
+              // Then delete from Firebase
+              const userToDelete = users.find((user) => user._id === id);
+              if (userToDelete && userToDelete.uid) {
+                return fetch(
+                  `https://coffee-store-server-rust-seven.vercel.app/delete-user/${userToDelete.uid}`,
+                  {
+                    method: "DELETE",
+                  }
+                );
+              }
+              return Promise.resolve();
             }
+          })
+          .then(() => {
+            // Update UI after both deletions are complete
+            const remainingUsers = users.filter((user) => user._id !== id);
+            setUsers(remainingUsers);
+
+            Swal.fire({
+              title: "Deleted!",
+              text: "User has been deleted from both systems.",
+              icon: "success",
+            });
+          })
+          .catch((error) => {
+            console.error("Error deleting user:", error);
+            Swal.fire({
+              title: "Error!",
+              text: "There was an issue deleting the user.",
+              icon: "error",
+            });
           });
       }
     });
